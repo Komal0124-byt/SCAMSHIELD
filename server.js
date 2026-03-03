@@ -62,9 +62,20 @@ app.post("/check", async (req, res) => {
     return res.json({ result: "Please enter a message." });
   }
 
-  let result;
+  let lowerMsg = message.toLowerCase();
+  let result = "✅ This message looks Safe.";
 
-
+  // Scam keyword detection
+  if (
+    lowerMsg.includes("win") ||
+    lowerMsg.includes("lottery") ||
+    lowerMsg.includes("click") ||
+    lowerMsg.includes("otp") ||
+    lowerMsg.includes("urgent") ||
+    lowerMsg.includes("prize")
+  ) {
+    result = "⚠️ This looks like a Scam!";
+  }
 
   try {
     await Scan.create({ message, result });
@@ -73,6 +84,34 @@ app.post("/check", async (req, res) => {
     res.status(500).json({ error: "Database save failed" });
   }
 });
+ app.post("/report-call", async (req, res) => {
+  const { phone } = req.body;
+
+  if (!phone) {
+    return res.json({ result: "Enter phone number." });
+  }
+
+  const existing = await Call.findOne({ phone });
+
+  if (existing) {
+    return res.json({ result: "⚠️ This number is already reported as Scam!" });
+  }
+
+  await Call.create({ phone });
+
+  res.json({ result: "🚨 Number reported successfully!" });
+});
+app.post("/check-number", async (req, res) => {
+  const { phone } = req.body;
+
+  const existing = await Call.findOne({ phone });
+
+  if (existing) {
+    return res.json({ result: "⚠️ This number is reported as Scam!" });
+  } else {
+    return res.json({ result: "✅ This number looks Safe." });
+  }
+}); 
 app.get("/history", async (req, res) => {
   try {
     const history = await Scan.find()
