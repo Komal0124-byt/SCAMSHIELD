@@ -8,6 +8,46 @@ const app = express();
 require("dotenv").config();
 const mongoose = require("mongoose");
 
+  const lowerMsg = message.toLowerCase();
+
+app.post("/check", async (req, res) => {
+  const { message } = req.body;
+
+  if (!message) {
+    return res.json({ result: "Please enter a message." });
+  }
+
+  const lowerMsg = message.toLowerCase();
+
+  const scamKeywords = [
+    "win",
+    "lottery",
+    "prize",
+    "money",
+    "click",
+    "link",
+    "otp",
+    "urgent",
+    "account",
+    "verify",
+    "bank"
+  ];
+
+  let isScam = scamKeywords.some(keyword =>
+    lowerMsg.includes(keyword)
+  );
+
+  const result = isScam
+    ? "⚠️ This looks like a Scam!"
+    : "✅ This message looks Safe.";
+
+  try {
+    await Scan.create({ message, result });
+    res.json({ result });
+  } catch (err) {
+    res.status(500).json({ error: "Database save failed" });
+  }
+});
 app.use(cors());
 app.use(express.json());
 
@@ -24,19 +64,7 @@ app.post("/check", async (req, res) => {
 
   let result;
 
-  const lowerMsg = message.toLowerCase();
 
-if (
-  lowerMsg.includes("win") ||
-  lowerMsg.includes("prize") ||
-  lowerMsg.includes("lottery") ||
-  lowerMsg.includes("money") ||
-  lowerMsg.includes("claim")
-) {
-  result = "⚠️ This looks like a Scam!";
-} else {
-  result = "✅ This message looks Safe.";
-}
 
   try {
     await Scan.create({ message, result });
