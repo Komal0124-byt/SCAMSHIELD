@@ -88,13 +88,75 @@ const Call = require("./models/call");
 
 // Add new call
 app.post("/calls/add", async (req, res) => {
+  const { number, type, notes } = req.body;
+
+  if (!number) {
+    return res.status(400).json({ message: "Number required" });
+  }
+
+  const lowerNotes = notes ? notes.toLowerCase() : "";
+
+  // ✅ OTP word auto scam mark
+  let finalType = type;
+  if (lowerNotes.includes("otp")) {
+    finalType = "scam";
+  }
+
   try {
-    const { number, type, notes } = req.body;
-    const call = new Call({ number, type, notes });
-    await call.save();
-    res.json({ message: "Call saved successfully" });
+    // ✅ Check duplicate number
+    const existingCall = await Call.findOne({ number });
+
+    if (existingCall) {
+      return res.json({
+        message: "⚠️ Number already exists in database!",
+        existing: existingCall,
+      });
+    }
+
+    const newCall = await Call.create({
+      number,
+      type: finalType,
+      notes,
+    });
+
+    res.json({
+      message: "Call added successfully",
+      data: newCall,
+    });
+
   } catch (err) {
-    res.status(500).json({ error: "Failed to save call" });
+    res.status(500).json({ error: "Failed to add call" });
+  }
+});  
+
+
+app.get("/calls/check/:number", async (req, res) => {
+  const { number } = req.params;
+
+  try {
+    const call = await Call.findOne({ number });
+
+    if (!call) {
+      return res.json({
+        status: "unknown",
+        message: "No record found for this number.",
+      });
+    }
+
+    if (call.type === "scam") {
+      return res.json({
+        status: "scam",
+        message: "⚠️ Warning! This number is reported as Scam.",
+      });
+    }
+
+    return res.json({
+      status: "safe",
+      message: "✅ This number is marked Safe.",
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: "Check failed" });
   }
 });
 
