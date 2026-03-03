@@ -24,11 +24,19 @@ app.post("/check", async (req, res) => {
 
   let result;
 
-  if (message.toLowerCase().includes("win money")) {
-    result = "⚠️ This looks like a Scam!";
-  } else {
-    result = "✅ This message looks Safe.";
-  }
+  const lowerMsg = message.toLowerCase();
+
+if (
+  lowerMsg.includes("win") ||
+  lowerMsg.includes("prize") ||
+  lowerMsg.includes("lottery") ||
+  lowerMsg.includes("money") ||
+  lowerMsg.includes("claim")
+) {
+  result = "⚠️ This looks like a Scam!";
+} else {
+  result = "✅ This message looks Safe.";
+}
 
   try {
     await Scan.create({ message, result });
