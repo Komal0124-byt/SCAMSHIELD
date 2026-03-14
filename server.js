@@ -1,16 +1,24 @@
+require('dns').setServers(['8.8.8.8','8.8.4.4']);
 
-require('dns').setServers(['8.8.8.8','8.8.8.4']);
-const Scan = require("./models/scan");
 const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
+require("dotenv").config();
+
+const Scan = require("./models/scan");
+const Call = require("./models/call");
 
 const app = express();
-require("dotenv").config();
-const mongoose = require("mongoose");
 
-  const lowerMsg = message.toLowerCase();
+app.use(cors());
+app.use(express.json());
+
+app.get("/", (req, res) => {
+  res.json({ message: "Backend Connected Successfully 🚀" });
+});
 
 app.post("/check", async (req, res) => {
+
   const { message } = req.body;
 
   if (!message) {
@@ -33,7 +41,7 @@ app.post("/check", async (req, res) => {
     "bank"
   ];
 
-  let isScam = scamKeywords.some(keyword =>
+  const isScam = scamKeywords.some(keyword =>
     lowerMsg.includes(keyword)
   );
 
@@ -42,175 +50,162 @@ app.post("/check", async (req, res) => {
     : "✅ This message looks Safe.";
 
   try {
-    await Scan.create({ message, result });
+
+    await Scan.create({
+      message,
+      result
+    });
+
     res.json({ result });
+
   } catch (err) {
-    res.status(500).json({ error: "Database save failed" });
+
+    res.status(500).json({
+      error: "Database save failed"
+    });
+
   }
+
 });
-app.use(cors());
-app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.json({ message: "Backend Connected Successfully 🚀" });
-});
-
-app.post("/check", async (req, res) => {
-  const { message } = req.body;
-
-  if (!message) {
-    return res.json({ result: "Please enter a message." });
-  }
-
-  let lowerMsg = message.toLowerCase();
-  let result = "✅ This message looks Safe.";
-
-  // Scam keyword detection
-  if (
-    lowerMsg.includes("win") ||
-    lowerMsg.includes("lottery") ||
-    lowerMsg.includes("click") ||
-    lowerMsg.includes("otp") ||
-    lowerMsg.includes("urgent") ||
-    lowerMsg.includes("prize")
-  ) {
-    result = "⚠️ This looks like a Scam!";
-  }
-
-  try {
-    await Scan.create({ message, result });
-    res.json({ result });
-  } catch (err) {
-    res.status(500).json({ error: "Database save failed" });
-  }
-});
- app.post("/report-call", async (req, res) => {
-  const { phone } = req.body;
-
-  if (!phone) {
-    return res.json({ result: "Enter phone number." });
-  }
-
-  const existing = await Call.findOne({ phone });
-
-  if (existing) {
-    return res.json({ result: "⚠️ This number is already reported as Scam!" });
-  }
-
-  await Call.create({ phone });
-
-  res.json({ result: "🚨 Number reported successfully!" });
-});
-app.post("/check-number", async (req, res) => {
-  const { phone } = req.body;
-
-  const existing = await Call.findOne({ phone });
-
-  if (existing) {
-    return res.json({ result: "⚠️ This number is reported as Scam!" });
-  } else {
-    return res.json({ result: "✅ This number looks Safe." });
-  }
-}); 
 app.get("/history", async (req, res) => {
+
   try {
+
     const history = await Scan.find()
       .sort({ createdAt: -1 })
       .select("-__v");
 
     res.json(history);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch history" });
-  }
-});
-const Call = require("./models/call");
 
-// Add new call
+  } catch (err) {
+
+    res.status(500).json({
+      error: "Failed to fetch history"
+    });
+
+  }
+
+});
+
 app.post("/calls/add", async (req, res) => {
+
   const { number, type, notes } = req.body;
 
   if (!number) {
-    return res.status(400).json({ message: "Number required" });
+    return res.status(400).json({
+      message: "Number required"
+    });
   }
 
   const lowerNotes = notes ? notes.toLowerCase() : "";
 
-  // ✅ OTP word auto scam mark
+  // OTP word auto scam
   let finalType = type;
+
   if (lowerNotes.includes("otp")) {
     finalType = "scam";
   }
 
   try {
-    // ✅ Check duplicate number
+
     const existingCall = await Call.findOne({ number });
 
     if (existingCall) {
       return res.json({
         message: "⚠️ Number already exists in database!",
-        existing: existingCall,
+        existing: existingCall
       });
     }
 
     const newCall = await Call.create({
       number,
       type: finalType,
-      notes,
+      notes
     });
 
     res.json({
       message: "Call added successfully",
-      data: newCall,
+      data: newCall
     });
 
   } catch (err) {
-    res.status(500).json({ error: "Failed to add call" });
-  }
-});  
 
+    res.status(500).json({
+      error: "Failed to add call"
+    });
+
+  }
+
+});
 
 app.get("/calls/check/:number", async (req, res) => {
+
   const { number } = req.params;
 
   try {
+
     const call = await Call.findOne({ number });
 
     if (!call) {
+
       return res.json({
         status: "unknown",
-        message: "No record found for this number.",
+        message: "No record found for this number."
       });
+
     }
 
     if (call.type === "scam") {
+
       return res.json({
         status: "scam",
-        message: "⚠️ Warning! This number is reported as Scam.",
+        message: "⚠️ Warning! This number is reported as Scam."
       });
+
     }
 
     return res.json({
       status: "safe",
-      message: "✅ This number is marked Safe.",
+      message: "✅ This number is marked Safe."
     });
 
   } catch (err) {
-    res.status(500).json({ error: "Check failed" });
+
+    res.status(500).json({
+      error: "Check failed"
+    });
+
   }
+
 });
 
-// Get call history
 app.get("/calls/history", async (req, res) => {
+
   try {
-    const calls = await Call.find().sort({ createdAt: -1 });
+
+    const calls = await Call.find()
+      .sort({ createdAt: -1 });
+
     res.json(calls);
+
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch calls" });
+
+    res.status(500).json({
+      error: "Failed to fetch calls"
+    });
+
   }
+
 });
+
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected ✅"))
-  .catch((err) => console.log(err));
+.then(() => {
+  console.log("MongoDB Connected ✅");
+})
+.catch(err => {
+  console.log(err);
+});
 
 const PORT = process.env.PORT || 5000;
 
