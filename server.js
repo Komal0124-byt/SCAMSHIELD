@@ -17,7 +17,6 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.json({ message: "Backend Connected Successfully 🚀" });
 });
-
 app.post("/check", async (req, res) => {
 
   const { message } = req.body;
@@ -28,49 +27,82 @@ app.post("/check", async (req, res) => {
 
   const lowerMsg = message.toLowerCase();
 
+  // 🔴 1. Strong keyword list
   const scamKeywords = [
-    "win",
-    "lottery",
-    "prize",
-    "money",
-    "click",
-    "link",
-    "otp",
-    "urgent",
-    "account",
-    "verify",
-    "bank"
+    "win", "lottery", "prize", "money", "free",
+    "click", "link", "otp", "urgent",
+    "account", "verify", "bank", "password"
   ];
+
+  // 🔴 2. Phishing trigger phrases
   const scamTriggers = [
-  "confirm your information",
-  "update your details",
-  "click here",
-  "urgent action required",
-  "verify your account"
-];
-const trustedDomains = ["fedex.com", "amazon.com", "flipkart.com"];
+    "confirm your information",
+    "update your details",
+    "click here",
+    "urgent action required",
+    "verify your account",
+    "limited time offer"
+  ];
 
-function isFakeDomain(url) {
-  return !trustedDomains.some(domain => url.includes(domain));
-}
+  // 🟢 Trusted domains
+  const trustedDomains = [
+    "fedex.com",
+    "amazon.com",
+    "flipkart.com",
+    "paypal.com"
+  ];
 
-  const isScam = scamKeywords.some(keyword =>
-    lowerMsg.includes(keyword)
-  );
+  // 🔍 Extract URLs
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const urls = message.match(urlRegex) || [];
 
-  const result = isScam
-    ? "⚠️ This looks like a Scam!"
-    : "✅ This message looks Safe.";
+  // 🔍 Improved domain checker
+  function isFakeDomain(url) {
+    try {
+      const domain = new URL(url).hostname.replace("www.", "");
+      return !trustedDomains.includes(domain);
+    } catch {
+      return true;
+    }
+  }
 
+  // 🔥 3. Checks
+  const hasKeyword = scamKeywords.some(k => lowerMsg.includes(k));
+  const hasTrigger = scamTriggers.some(t => lowerMsg.includes(t));
+  const hasFakeLink = urls.some(url => isFakeDomain(url));
+
+  // ⚠️ 4. Risk scoring system (PRO FEATURE)
+  let score = 0;
+
+  if (hasKeyword) score += 1;
+  if (hasTrigger) score += 2;
+  if (hasFakeLink) score += 3;
+
+  // 🎯 5. Final decision
+  let result = "";
+  let riskLevel = "";
+
+  if (score >= 4) {
+    result = "🚨 High Risk Scam Detected!";
+    riskLevel = "HIGH";
+  } else if (score >= 2) {
+    result = "⚠️ Suspicious Message!";
+    riskLevel = "MEDIUM";
+  } else {
+    result = "✅ This message looks Safe.";
+    riskLevel = "LOW";
+  }
 
   try {
 
     await Scan.create({
       message,
-      result
+      result,
+      riskLevel,
+      score
     });
 
-    res.json({ result });
+    res.json({ result, riskLevel, score });
 
   } catch (err) {
 
@@ -81,7 +113,6 @@ function isFakeDomain(url) {
   }
 
 });
-
 app.get("/history", async (req, res) => {
 
   try {
