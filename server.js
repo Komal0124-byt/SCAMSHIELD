@@ -7,6 +7,7 @@ require("dotenv").config();
 
 const Scan = require("./models/scan");
 const Call = require("./models/call");
+const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 const app = express();
 
@@ -40,6 +41,18 @@ app.post("/check", async (req, res) => {
     "verify",
     "bank"
   ];
+  const scamTriggers = [
+  "confirm your information",
+  "update your details",
+  "click here",
+  "urgent action required",
+  "verify your account"
+];
+const trustedDomains = ["fedex.com", "amazon.com", "flipkart.com"];
+
+function isFakeDomain(url) {
+  return !trustedDomains.some(domain => url.includes(domain));
+}
 
   const isScam = scamKeywords.some(keyword =>
     lowerMsg.includes(keyword)
@@ -48,6 +61,7 @@ app.post("/check", async (req, res) => {
   const result = isScam
     ? "⚠️ This looks like a Scam!"
     : "✅ This message looks Safe.";
+
 
   try {
 
