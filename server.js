@@ -29,20 +29,22 @@ app.post("/check", async (req, res) => {
 
   // 🔴 1. Strong keyword list
   const scamKeywords = [
-    "win", "lottery", "prize", "money", "free",
-    "click", "link", "otp", "urgent",
-    "account", "verify", "bank", "password"
-  ];
+  "win", "lottery", "prize", "money",
+  "click", "link", "otp", "urgent",
+  "account", "verify", "bank",
+  "alert", "login", "secure"
+ ];
 
   // 🔴 2. Phishing trigger phrases
   const scamTriggers = [
-    "confirm your information",
-    "update your details",
-    "click here",
-    "urgent action required",
-    "verify your account",
-    "limited time offer"
-  ];
+  "confirm your information",
+  "update your details",
+  "click here",
+  "urgent action required",
+  "verify your account",
+  "secure your account",
+  "unusual sign-in attempt"
+];
 
   // 🟢 Trusted domains
   const trustedDomains = [
@@ -70,6 +72,9 @@ app.post("/check", async (req, res) => {
   const hasKeyword = scamKeywords.some(k => lowerMsg.includes(k));
   const hasTrigger = scamTriggers.some(t => lowerMsg.includes(t));
   const hasFakeLink = urls.some(url => isFakeDomain(url));
+  const hasAlertPattern =
+  lowerMsg.includes("alert") &&
+  (lowerMsg.includes("account") || lowerMsg.includes("login"));
 
   // ⚠️ 4. Risk scoring system (PRO FEATURE)
   let score = 0;
@@ -77,6 +82,11 @@ app.post("/check", async (req, res) => {
   if (hasKeyword) score += 1;
   if (hasTrigger) score += 2;
   if (hasFakeLink) score += 3;
+  const isScam =
+  hasKeyword ||
+  hasTrigger ||
+  hasFakeLink ||
+  hasAlertPattern;
 
   // 🎯 5. Final decision
   let result = "";
